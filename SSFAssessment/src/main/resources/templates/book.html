@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Details</title>
+    <link rel="stylesheet" href="/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <div data-th-object="${bookDetails}">
+            <img data-th-src="*{thumbnailURL}">
+            <table>
+                <tr>
+                    <td><b>Title: </b><span data-th-text="*{title}"></span>
+                </tr>
+                <tr>
+                    <td data-th-if="*{description !=null}"><b>Description:</b> <span
+                            data-th-text="*{description}"></span>
+                    </td>
+                    <td data-th-if="*{description == null}"><b>Description:</b> Not Available </td>
+                </tr>
+
+                <tr>
+                    <td data-th-if="*{excerpt != null}"><b>Excerpt:</b> <span data-th-text="*{excerpt}"> </span></td>
+                    <td data-th-if="*{excerpt == null}"><b>Excerpt:</b> Not Available</td>
+                </tr>
+
+                <tr>
+                    <td><b>Cached:</b> true or false</td>
+                </tr>
+
+            </table>
+
+            <a href="/"><b>Back</b></a>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
