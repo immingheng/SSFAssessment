@@ -12,7 +12,12 @@
 <body>
     <div class="container">
         <div data-th-object="${bookDetails}" class="d-flex justify-content-center">
-            <img data-th-src="*{thumbnailURL}" width="400" height="400">
+            <div data-th-if="*{thumbnailURL!=null}">
+                <img data-th-src="*{thumbnailURL}" width="400" height="400">
+            </div>
+            <div data-th-if="*{thumbnailURL==null}">
+                <p>No Image Found</p>
+            </div>
             <table>
                 <tr>
                     <td><b>Title: </b><span data-th-text="*{title}"></span>

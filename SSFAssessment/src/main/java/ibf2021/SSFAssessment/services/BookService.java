@@ -127,7 +127,12 @@ public class BookService {
                 logger.info("bookData --> " + bookData);
                 String title = bookData.getString("title");
                 logger.info("Book title -->" + title);
-                String coverID = bookData.getJsonArray("covers").get(0).toString();
+                String coverID;
+                if (bookData.containsKey("covers")) {
+                    coverID = bookData.getJsonArray("covers").get(0).toString();
+                } else {
+                    coverID = null;
+                }
                 String coverURL = "https://covers.openlibrary.org/b/id/";
                 String formatExtension = "-L.jpg";
                 String thumbnailURL = "%s%s%s".formatted(coverURL, coverID, formatExtension);
