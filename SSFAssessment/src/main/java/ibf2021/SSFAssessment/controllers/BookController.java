@@ -27,6 +27,7 @@ public class BookController {
         logger.info("bookId that's parsed in -->" + bookId);
         // use the book ID to GET book details to be displayed in book.html
         // by passing in BookSvc.getBook(bookId)
+
         Book bookDetails = bookSvc.getBook(bookId);
         model.addAttribute("bookDetails", bookDetails);
 

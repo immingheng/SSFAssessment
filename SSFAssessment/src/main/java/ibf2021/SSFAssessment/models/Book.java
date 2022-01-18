@@ -1,17 +1,33 @@
 package ibf2021.SSFAssessment.models;
 
-public class Book {
+import java.io.Serializable;
+
+public class Book implements Serializable {
     private String worksID;
     private String title;
     private String thumbnailURL;
     private String excerpt;
     private String description;
+    private boolean Cached;
 
     // Empty Constructor
     public Book() {
     }
 
     // Getters and Setters
+
+    public boolean isCached() {
+        return this.Cached;
+    }
+
+    public boolean getCached() {
+        return this.Cached;
+    }
+
+    public void setCached(boolean Cached) {
+        this.Cached = Cached;
+    }
+
     public String getExcerpt() {
         return this.excerpt;
     }

@@ -11,8 +11,8 @@
 
 <body>
     <div class="container">
-        <div data-th-object="${bookDetails}">
-            <img data-th-src="*{thumbnailURL}">
+        <div data-th-object="${bookDetails}" class="d-flex justify-content-center">
+            <img data-th-src="*{thumbnailURL}" width="400" height="400">
             <table>
                 <tr>
                     <td><b>Title: </b><span data-th-text="*{title}"></span>
@@ -30,15 +30,13 @@
                 </tr>
 
                 <tr>
-                    <td><b>Cached:</b> true or false</td>
+                    <td><b>Cached:</b> <span data-th-text="*{Cached}"></span></td>
                 </tr>
 
             </table>
 
-            <a href="/"><b>Back</b></a>
-
         </div>
-
+        <a href="/"><b>Back</b></a>
     </div>
 
 </body>

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -16,15 +17,21 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import ibf2021.SSFAssessment.models.Book;
+import ibf2021.SSFAssessment.repositories.BookRepository;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
 
 @Service
 public class BookService {
 
     private final Logger logger = Logger.getLogger(BookService.class.getName());
+
+    // Implementation of caching - save to Redis and getBook(by ID)
+    @Autowired
+    BookRepository bookRepo;
 
     // Method to call in SearchController to search for the list of books (Max 20
     // indicated in queryParam)
@@ -93,50 +100,86 @@ public class BookService {
     }
 
     public Book getBook(String bookId) {
-        String baseURI = "https://openlibrary.org/works/";
-        String url = "%s%s%s".formatted(baseURI, bookId, ".json");
-        logger.info("URL TO GET BOOK DETALS BASED ON WORK ID --> " + url);
-        Book book = new Book();
-        RequestEntity<Void> req = RequestEntity.get(url).build();
-        RestTemplate template = new RestTemplate();
-        ResponseEntity<String> resp = template.exchange(req, String.class);
-        // resp will be the entire JSON that has to be manipulated to extract title,
-        // description, covers (Used to generate thumbnail) and excerpts accordingly.
-        // logger.info("resp --> " + resp);
-        try (InputStream is = new ByteArrayInputStream(resp.getBody().getBytes())) {
-            JsonReader reader = Json.createReader(is);
-            JsonObject bookData = reader.readObject();
-            logger.info("bookData --> " + bookData);
-            String title = bookData.getString("title");
-            logger.info("Book title -->" + title);
-            String coverID = bookData.getJsonArray("covers").get(0).toString();
-            String coverURL = "https://covers.openlibrary.org/b/id/";
-            String formatExtension = "-L.jpg";
-            String thumbnailURL = "%s%s%s".formatted(coverURL, coverID, formatExtension);
-            logger.info("ThumbnailURL-->" + thumbnailURL);
-            String description = (bookData.getString("description", null));
-            logger.info("Book description-->" + description);
-            String excerpt;
-            Optional<JsonArray> excerpts = Optional.ofNullable(bookData.getJsonArray("excerpts"));
-            if (excerpts.isPresent()) {
-                JsonArray excerptsPresent = excerpts.get();
-                excerpt = excerptsPresent.get(0).asJsonObject().getString("excerpt", "");
-            } else {
-                excerpt = null;
-            }
-            logger.info("Excerpt -->" + excerpt);
-            book.setTitle(title);
-            book.setThumbnailURL(thumbnailURL);
-            book.setDescription(description);
-            book.setExcerpt(excerpt);
-
-        } catch (IOException IOException) {
-            IOException.printStackTrace();
-        } catch (RestClientException RCException) {
-            RCException.printStackTrace();
+        // CHECK CACHE - if book is present, get it and return it
+        if (bookRepo.getBook(bookId).isPresent()) {
+            Book bk = bookRepo.getBook(bookId).get();
+            bk.setCached(true);
+            logger.info("CACHE HIT");
+            return bk;
         }
 
-        return book;
+        else {
+
+            // API CALL
+            String baseURI = "https://openlibrary.org/works/";
+            String url = "%s%s%s".formatted(baseURI, bookId, ".json");
+            logger.info("URL TO GET BOOK DETALS BASED ON WORK ID --> " + url);
+            Book book = new Book();
+            RequestEntity<Void> req = RequestEntity.get(url).build();
+            RestTemplate template = new RestTemplate();
+            ResponseEntity<String> resp = template.exchange(req, String.class);
+            // resp will be the entire JSON that has to be manipulated to extract title,
+            // description, covers (Used to generate thumbnail) and excerpts accordingly.
+            // logger.info("resp --> " + resp);
+            try (InputStream is = new ByteArrayInputStream(resp.getBody().getBytes())) {
+                JsonReader reader = Json.createReader(is);
+                JsonObject bookData = reader.readObject();
+                logger.info("bookData --> " + bookData);
+                String title = bookData.getString("title");
+                logger.info("Book title -->" + title);
+                String coverID = bookData.getJsonArray("covers").get(0).toString();
+                String coverURL = "https://covers.openlibrary.org/b/id/";
+                String formatExtension = "-L.jpg";
+                String thumbnailURL = "%s%s%s".formatted(coverURL, coverID, formatExtension);
+                logger.info("ThumbnailURL-->" + thumbnailURL);
+
+                // As the API has 2 formats for description, handle both of them with the
+                // following boolean conditions
+                // if description does not exists altogther, returns a null
+                // NOTE THAT THERE IS STILL CERTAIN CASES NOT ACCOUNTED FOR BUT IT SHOULD GIVE A
+                // RESULT FOR LORD OF THE RINGS AND HARRY POTTER
+                String description;
+                Optional<JsonValue> descriptions = Optional.ofNullable(bookData.get("description"));
+
+                if (descriptions.isPresent()) {
+                    if (descriptions.get().getValueType().equals(JsonObject.EMPTY_JSON_OBJECT.getValueType())) {
+                        description = bookData.getJsonObject("description").getString("value", null);
+                    } else {
+                        description = bookData.getString("description", null);
+                    }
+                } else {
+                    description = null;
+                }
+
+                logger.info("Book description-->" + description);
+                String excerpt;
+                Optional<JsonArray> excerpts = Optional.ofNullable(bookData.getJsonArray("excerpts"));
+                if (excerpts.isPresent()) {
+                    JsonArray excerptsPresent = excerpts.get();
+                    excerpt = excerptsPresent.get(0).asJsonObject().getString("excerpt");
+                } else {
+                    excerpt = null;
+                }
+                logger.info("Excerpt -->" + excerpt);
+                book.setTitle(title);
+                book.setThumbnailURL(thumbnailURL);
+                book.setDescription(description);
+                book.setExcerpt(excerpt);
+
+            } catch (
+
+            IOException IOException) {
+                IOException.printStackTrace();
+            } catch (RestClientException RCException) {
+                RCException.printStackTrace();
+            }
+            // SET CACHE = TRUE AND SAVE TO REDIS
+            book.setCached(false);
+            bookRepo.addToRedis(bookId, book);
+            logger.info("BOOK FROM API CALL");
+
+            return book;
+        }
     }
 
 }
